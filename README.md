@@ -11,7 +11,7 @@ Existing alleles are removed from population through:
 - Genetic drift
 - (Emigration is negligible)
 
-New combinations of alleles can arise by crossing-over the existing ones.
+New combinations of alleles can arise by crossing-over their corresponding chromosomes.
 Remember that natural selection do not act on alleles themselves, but on their phenotypic effect.
 
 ## Implementation
