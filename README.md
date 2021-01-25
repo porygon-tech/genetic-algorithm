@@ -24,8 +24,9 @@ Each \"organism\" has a bunch of binary sequences associated that act as its \"c
 
 
 
-
-
+More exploitatory variants (only useful when used on well-behaved functions!):
+Elitist - takes only the fittest individuals.
+Steady state - when selected parents generate their two children (with crossover and mutation), the two best ones out of this four-member family are selected. (¿Removes individuals at random (biased by fitness)?).
 
 
 
