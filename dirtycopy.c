@@ -30,35 +30,30 @@ double d4 = TheData->PopSize (xt[01+xt111+xt121+xt131+xt141+xt norm +. ndays  (0
 
 int Steepest_Descent_backtracking(double *, double *, double *, double (*) (double *, double *, void *), double *, void *);
 
+void CoreModelOuadraticErrorFitness(individual *ind, void TheData_void) {DataForFitting TheData = (DataForFitting *) TheData_void;
+	double ic[CoreModelDIM] = { TheData -> PopSize, crom2IC(ind->IC[0]), crom2IC(ind->IC[1]), crom2IC(ind->IC[2]), 
+	                            TheData -> Data_Time_Series[0][0]
+	                            TheData -> Data_Time_Series[0][3] }
 
-void CoreModelOuadraticErrorFitness(individual *ind, void TheData_void) {
-	DataForFitting TheData = (DataForFitting *) TheData_void;
-	double i
+	ind -> DeltaPars[0]  =  crom2HSPar (ind->Pars[0]  + ind->DeltaPars[0] );
+	ind -> DeltaPars[9]  =  crom2HSPar (ind->pars[9]  + ind->DeltaPars[9] );
+	ind -> DeltaPars[10] =  crom2HSPar (ind->pars[10] + ind->DeltaPars[10]);
+	ind -> DeltaPars[1]  =  crom2Par   (ind->pars[1]  + ind->DeltaPars[1] );
+	ind -> DeltaPars[4]  =  crom2Par   (ind->pars[4]  + ind->DeltaPars[4] );
+	ind -> DeltaPars[5]  =  crom2Par   (ind->pars[5]  + ind->DeltaPars[5] );
+	ind -> DeltaPars[6]  =  crom2Par   (ind->pars[6]  + ind->DeltaPars[6] );
+	ind -> DeltaPars[8]  =  crom2Par   (ind->pars[8]  + ind->DeltaPars[8] );
+	ind -> DeltaPars[2]  =  crom2LSPar (ind->pars[2]  + ind->DeltaPars[2] );
+	ind -> DeltaPars[3]  =  crom2LSPar (ind->pars[3]  + ind->DeltaPars[3] );
+	ind -> DeltaPars[7]  =  crom2LSPar (ind->pars[7]  + ind->DeltaPars[7] );
 
+	int niters = Steepest_Descent_backtracking(ind->DeltaPars, &(ind->fitness), &fitness_not_improved, Parameters2norm, ic, TheData_void). 
+
+/*
+...........................
+*/
 
 }
-/*
-
-double ic1CoreModelDIM)  ( TheData->PopSize, crom2IC(ind->IC101), c TheData->Data Time Series101101, TheData TheData->Data Time Series101131 }, fitne MO) -. (ic111+ic[21+103)+ic[41+ic[51+1.0611;
-
-ind -> DeltaPars[0]  =  crom2HSPar (ind->Pars[0]  + ind->DeltaPars[0]);
-ind -> DeltaPars[9]  =  crom2HSPar (ind->pars[9]  + ind->DeltaPars[9]);
-ind -> DeltaPars[10] =  crom2HSPar (ind->pars[10] + ind->DeltaPars[10]);
-ind -> DeltaPars[1]  =  crom2Par   (ind->pars[1]  + ind->DeltaPars[1]);
-ind -> DeltaPars[4]  =  crom2Par   (ind->pars[4]  + ind->DeltaPars[4]);
-ind -> DeltaPars[5]  =  crom2Par   (ind->pars[5]  + ind->DeltaPars[5]);
-ind -> DeltaPars[6]  =  crom2Par   (ind->pars[6]  + ind->DeltaPars[6]);
-ind -> DeltaPars[8]  =  crom2Par   (ind->pars[8]  + ind->DeltaPars[8]);
-ind -> DeltaPars[2]  =  crom2LSPar (ind->pars[2]  + ind->DeltaPars[2]);
-ind -> DeltaPars[3]  =  crom2LSPar (ind->pars[3]  + ind->DeltaPars[3]);
-ind -> DeltaPars[7]  =  crom2LSPar (ind->pars[7]  + ind->DeltaPars[7]);
-
-[51+xt161+xt1711  TheData>Data Time Series1ndays1141;
-
- 'om2ICtind->IC[111. crom2IC(Ind>IC(21), .>Data Time Series101111. TheData>Data Time Series101121. is not improved;
-
-int niters = Steepest Descent backtrackingtind>DeltaPars, &(ind>fitness). Uhl-leas not improved. raromecersznorm. sc, Ineuata voaa). 
-*/
 
 
 
