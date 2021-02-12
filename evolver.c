@@ -1,24 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "RKF78-2.2.c/RKF78.h"
+#include "RKF78.h"
 #include <math.h>
 
 /*DEBUGGING:  
 gcc evolver.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-libasan -g -Wall && time ./evo
 */
 
-#define n_genes_IC 3
-#define n_genes_params 11
+#define IC_GENES_NUMBER 3
+#define PARAMETERS_GENES_NUMBER 11
+
 #define CoreModelDIM 8
 #define HMAX 1.0
 #define HMIN 1.e-3
 #define RKTOL 1.e-5
+#define Number_of_days_in_time_series 101
+#define Number_of_variables_in_time_series 5
+
+#define crom2IC(c) (((double) c)/1000)
+#define crom2HSPar(c) (((double) c)/1099511627776UL)
+#define crom2Par(c) (((double) c)/1048576U)
+#define crom2LSPar(c) (((double) c)/1024U)
 
 typedef struct {
-	unsigned long IC[n_genes_IC];
-	unsigned long params[n_genes_params];
+	unsigned long IC[IC_GENES_NUMBER];
+	unsigned long Pars[PARAMETERS_GENES_NUMBER];
+	double DeltaPars[PARAMETERS_GENES_NUMBER];
 	double fitness;
-} indivtype;
+} individual;
 
 typedef struct {
 	double beta, phi, epsI, epsY, sigma, gamma1, gamma2, kappa, p, alpha, delta;
@@ -27,56 +36,12 @@ typedef struct {
 
 typedef struct {
 	unsigned n_days;
-	float Data_Time_Series[n_days][5];
+	float Data_Time_Series[Number_of_days_in_time_series][Number_of_variables_in_time_series];
 	unsigned PopSize;
 } DataForFitting;
 
 
-void CoreModel(double t, double *x, unsigned CoreModelDIM, double *d, void *Params){
-	ODE_Parameters *par = (ODE_Parameters *) Params; // To simplify the usage of Params (void pointer)
-	
-	double sigmae   = par -> sigma * x[1],
-	       gamma1i1 = par -> gamma1 * x[2],
-	       kappaA   = par -> kappa*x[3],
-	       alphai2  = par -> alpha*x[5];
 
-	d[0] = par -> phi*x[2] + x[3] + (1-par -> epsI)*(x[4]+x[5]) + (1-par -> epsY)*x[6];
-	d[0] = - par -> beta * (x[0] * d[0])/par -> PopSize;
-	d[1] = - d[0] - sigmae;
-	d[2] = sigmae - gamma1i1;
-	d[3] = (1-par -> p)*gamma1i1 - kappaA - par -> gamma2*x[3] ;
-	d[4] = kappaA - par -> gamma2*x[4];
-	d[5] = par -> p*gamma1i1 - par -> gamma2*x[5] - alphai2;
-	d[6] = alphai2 - (par -> gamma2+par -> delta)*x[6];
-	d[7] = par -> gamma2*(x[3] + x[4] + x[5] + x[6]);
-}
-
-int GeneratePredictionFromIndividual(double *xt, void *ODE_pars, DataForFitting *Pred) {
-	register unsigned ndays;
-	double t = 0.0, err, h = 1.e-3;
-	for (ndays=1; ndays <= Pred -> n_days; ndays++) { 
-		int status;
-		while(t+h < ndays) {
-			status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
-			if(status) return status;
-		}
-		h = ndays - t;
-		status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
-		if(status) return status;
-		Pred -> Data_Time_Series[ndays][0] = xt[4];
-		Pred -> Data_Time_Series[ndays][1] = xt[5];
-		Pred -> Data_Time_Series[ndays][2] = xt[6];
-		Pred -> Data_Time_Series[ndays][3] = xt[7];
-		Pred -> Data_Time_Series[ndays][4] = Pred -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]);
-	}
-	return 0;
-}
-
-
-#define crom2IC(c) (((double) c)/1000)
-#define crom2HSPar(c) (((double) c)/1099511627776UL)
-#define crom2Par(c) (((double) c)/1048576U)
-#define crom2LSPar(c) (((double) c)/1024U)
 
 void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 	DataForFitting *TDfF = (DataForFitting *) TheData;
@@ -123,6 +88,145 @@ void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 		ind -> fitness = MAXDOUBLE;
 		return;
 	};
+}
+
+void CoreModel(double t, double *x, unsigned CoreModelDIM, double *der, void *Params){
+	ODE_Parameters *par = (ODE_Parameters *) Params; // To simplify the usage of Params (void pointer)
+	
+	double sigmae   = par -> sigma * x[1],
+	       gamma1i1 = par -> gamma1 * x[2],
+	       kappaA   = par -> kappa*x[3],
+	       alphai2  = par -> alpha*x[5];
+
+	der[0] = par -> phi*x[2] + x[3] + (1-par -> epsI)*(x[4]+x[5]) + (1-par -> epsY)*x[6];
+	der[0] = - par -> beta * (x[0] * der[0])/par -> PopSize;
+	der[1] = - der[0] - sigmae;
+	der[2] = sigmae - gamma1i1;
+	der[3] = (1-par -> p)*gamma1i1 - kappaA - par -> gamma2*x[3] ;
+	der[4] = kappaA - par -> gamma2*x[4];
+	der[5] = par -> p*gamma1i1 - par -> gamma2*x[5] - alphai2;
+	der[6] = alphai2 - (par -> gamma2+par -> delta)*x[6];
+	der[7] = par -> gamma2*(x[3] + x[4] + x[5] + x[6]);
+}
+
+int GeneratePredictionFromIndividual(double *xt, void *ODE_pars, DataForFitting *Pred) {
+	register unsigned ndays;
+	double t = 0.0, err, h = 1.e-3;
+	for (ndays=1; ndays <= Pred -> n_days; ndays++) { 
+		int status;
+		while(t+h < ndays) {
+			status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
+			if(status) return status;
+		}
+		h = ndays - t;
+		status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
+		if(status) return status;
+		Pred -> Data_Time_Series[ndays][0] = xt[4];
+		Pred -> Data_Time_Series[ndays][1] = xt[5];
+		Pred -> Data_Time_Series[ndays][2] = xt[6];
+		Pred -> Data_Time_Series[ndays][3] = xt[7];
+		Pred -> Data_Time_Series[ndays][4] = Pred -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]);
+	}
+	return 0;
+}
+
+double Parameters2norm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define n_days 101 // Number of days in time series
+#define n_vars 5   // Number of variables in time series
+
+double Parameters2norm(double *parameters, double *x0, void *TheData void){
+      register unsigned ndays;
+      DataForFitting *TheData = (DataForFitting *) TheData void;
+      double t=0.0, err, h=1.e-3, norm=0.0;
+      ODE_Parameters ODE pars = { parameters[0], parameters[1], parameters[2], parameters[3],
+                                  parameters[4], parameters[5], parameters[6], parameters[7],
+                                  parameters[8], parameters[9], parameters[10], TheData->PopSize };
+      double xt[CoreModelDim]={x0[0], x0[1], x0[2], x0[3], x0[4], x0[5], x0[6], x0[7] };
+      
+      for (ndays=1; ndays<=TheData->n_days; ndays++) {
+          int status;
+          while (t+h < ndays) {
+                status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+                if (status) return MAXDOUBLE;
+          }
+          h=ndays-t;
+          status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+          if (status) return MAXDOUBLE;
+          
+          double d0=xt[4]-TheData -> Data_time_Series[ndays][0];
+          double d1=xt[5]-TheData -> Data_time_Series[ndays][1];
+          double d2=xt[6]-TheData -> Data_time_Series[ndays][2];
+          double d3=xt[7]-TheData -> Data_time_Series[ndays][3];
+          double d4=TheData -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]) -TheData -> Data_time_Series[ndays][4];
+          norm += ndays * (d0*d0+d1*d1+d2*d2+d3*d3+d4*d4);
+      }
+      return norm;      
+}
+
+
+
+
+
+
+int Steepest_Descent_backtracking(double *, double *, double *, double (*) (double *, double *, void *), double *, void *);
+
+
+void CoreModelOuadraticErrorFitness(individual *ind, void TheData_void) {DataForFitting TheData = (DataForFitting *) TheData_void;
+	double ic[CoreModelDIM] = { TheData -> PopSize, crom2IC(ind->IC[0]), crom2IC(ind->IC[1]), crom2IC(ind->IC[2]), 
+	                            TheData -> Data_Time_Series[0][0]
+	                            TheData -> Data_Time_Series[0][3] }
+
+	ic[0] -= (ic[1]+ic[2]+ic[3]+ic[4]+ic[5]+ic[6]);
+	ind -> DeltaPars[0]  =  crom2HSPar (ind->Pars[0]  + ind->DeltaPars[0] );
+	ind -> DeltaPars[9]  =  crom2HSPar (ind->pars[9]  + ind->DeltaPars[9] );
+	ind -> DeltaPars[10] =  crom2HSPar (ind->pars[10] + ind->DeltaPars[10]);
+	ind -> DeltaPars[1]  =  crom2Par   (ind->pars[1]  + ind->DeltaPars[1] );
+	ind -> DeltaPars[4]  =  crom2Par   (ind->pars[4]  + ind->DeltaPars[4] );
+	ind -> DeltaPars[5]  =  crom2Par   (ind->pars[5]  + ind->DeltaPars[5] );
+	ind -> DeltaPars[6]  =  crom2Par   (ind->pars[6]  + ind->DeltaPars[6] );
+	ind -> DeltaPars[8]  =  crom2Par   (ind->pars[8]  + ind->DeltaPars[8] );
+	ind -> DeltaPars[2]  =  crom2LSPar (ind->pars[2]  + ind->DeltaPars[2] );
+	ind -> DeltaPars[3]  =  crom2LSPar (ind->pars[3]  + ind->DeltaPars[3] );
+	ind -> DeltaPars[7]  =  crom2LSPar (ind->pars[7]  + ind->DeltaPars[7] );
+
+	int niters = Steepest_Descent_backtracking(ind->DeltaPars, &(ind->fitness), &fitness_not_improved, Parameters2norm, ic, TheData_void);
+	if(niters){ register unsigned i;
+		ind -> DeltaPars[0]  = Par2HSDiscPar(ind->DeltaPars[0]);
+		ind -> DeltaPars[9]  = Par2HSDiscPar(ind->DeltaPars[9]);
+		ind -> DeltaPars[10] = Par2HSDiscPar(ind->DeltaPars[10]);
+		ind -> DeltaPars[1]  = Par2DiscPar  (ind->DeltaPars[1]);
+		ind -> DeltaPars[4]  = Par2DiscPar  (ind->DeltaPars[4]);
+		ind -> DeltaPars[5]  = Par2DiscPar  (ind->DeltaPars[5]);
+		ind -> DeltaPars[6]  = Par2DiscPar  (ind->DeltaPars[6]);
+		ind -> DeltaPars[8]  = Par2DiscPar  (ind->DeltaPars[8]);
+		ind -> DeltaPars[2]  = Par2LSDiscPar(ind->DeltaPars[2]);
+		ind -> DeltaPars[3]  = Par2LSDiscPar(ind->DeltaPars[3]);
+		ind -> DeltaPars[7]  = Par2LSDiscPar(ind->DeltaPars[7]);
+		for (i = 0; i < PARAMETERS_GENES_NUMBER; ++i){
+			ind -> Pars[i] = ind -> DeltaPars[i];
+			ind -> DeltaPars[i] -= ind -> Pars[i];
+		}
+	}
+}
+
+
+
+
+
 
 
 
@@ -136,7 +240,7 @@ int main(int argc, char const *argv[])
 	DataForFitting realData;
 	realData.PopSize = 1000000;
 	realData.Data_Time_Series = {
-		{1.000, 1.000, 0.000, 0.000, 0.000},
+	//	{1.000, 1.000, 0.000, 0.000, 0.000},	
 		{1.841, 1.253, 0.056, 0.348, 0.000},
 		{2.285, 1.607, 0.123, 0.733, 0.002},
 		{2.571, 2.041, 0.203, 1.169, 0.004},
