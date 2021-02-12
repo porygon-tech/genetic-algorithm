@@ -1,8 +1,35 @@
 
-double Parameters2norm(double 
-	DataForFitting *TheData = (DataForFitting *) TheData_void;
-	double t = 0.0, err, h = 1.e-3, norm = 0.0; 
-	ODE_Parameters ODE_pars 
+#define n_days 101 // Number of days in time series
+#define n_vars 5   // Number of variables in time series
+
+double Params2norm(double *parameters, doble *x0, void *TheData void){
+      register unsigned ndays;
+      DataForFitting *TheData = (DataForFitting *) TheData void;
+      double t=0.0, err, h=1.e-3, norm=0.0;
+      ODE_Parameters ODE pars = { parameters[0], parameters[1], parameters[2], parameters[3],
+                                  parameters[4], parameters[5], parameters[6], parameters[7],
+                                  parameters[8], parameters[9], parameters[10], TheData->PopSize };
+      double xt[CoreModelDim]={x0[0], x0[1], x0[2], x0[3], x0[4], x0[5], x0[6], x0[7] };
+      
+      for (ndays=1; ndays<=TheData->n_days; ndays++) {
+          int status;
+          while (t+h < ndays) {
+                status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+                if (status) return MAXDOUBLE;
+          }
+          h=ndays-t;
+          status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+          if (status) return MAXDOUBLE;
+          
+          double d0=xt[4]-TheData -> Data_time_Series[ndays][0];
+          double d1=xt[5]-TheData -> Data_time_Series[ndays][1];
+          double d2=xt[6]-TheData -> Data_time_Series[ndays][2];
+          double d3=xt[7]-TheData -> Data_time_Series[ndays][3];
+          double d4=TheData -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]) -TheData -> Data_time_Series[ndays][4];
+          norm += ndays * (d0*d0+d1*d1+d2*d2+d3*d3+d4*d4);
+      }
+      return norm;      
+}
 
 /*
 double xt1CoreModelDIM1 = 
