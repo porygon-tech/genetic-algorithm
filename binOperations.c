@@ -14,58 +14,66 @@ void printbin(int n, int len){
 	printf("\n");
 }
 
-
 void seedinit(void){
 	time_t clock;
 	srand((unsigned) time(&clock));
 }
 
 double uniform(void){
+	// Returns a number in [0,1)
 	return (double)rand()/RAND_MAX;
-}; // Returns a number in [0,1)
-
-/*
-	
-void OnePointCrossover( unsigned int p1, 
-	                    unsigned int p2,
-                        unsigned int *f1, 
-                        unsigned int *f2){
-	unsigned char d = uniform()*( 8* sizeof( unsigned int)- 1) + 1;
-
-	unsigned int mask = 0xFFFFFFFFU << d;
-	*f1 = ( p1 & mask) | ( p2 & ~mask);
-	*f2 = ( p2 & mask) | ( p1 & ~mask);
 }
-*/
-/*
-void OnePointCrossover( unsigned int p1, 
-	                    unsigned int p2,
-                        unsigned int *f1, 
-                        unsigned int *f2){
-	unsigned char len = 8*sizeof(unsigned int);
-	unsigned char d = uniform()*(len- 1) + 1, di = len - d;
-	*f1 = ((p1>>d)<<d) | ((p2<<di)>>di);
-	*f2 = ((p2>>d)<<d) | ((p1<<di)>>di);
-}
-*/
 
+void crossover(unsigned int *a, unsigned int *b, unsigned int ndigits) {
+	unsigned int ax, bx;
+	unsigned int cut = uniform()*(ndigits-1) + 1;
+	unsigned int mask = pow(2,cut)-1;
+	ax = (~mask & *a) | ( mask & *b);
+	bx = ( mask & *a) | (~mask & *b);
+	*a = ax;
+	*b = bx;
+}
+
+void mutate(unsigned int *a, double mu, unsigned int ndigits){
+	//alters a single digit in sequence
+	double p = uniform();
+	if( p < mu){
+		//printf("%.4lf < %.4lf\n", p, mu);
+		unsigned int cut = uniform()*ndigits;
+		unsigned int point = pow(2,cut);
+		*a = (point ^ *a);
+	}
+}
 
 int main(int argc, char const *argv[])
 {
-
 	seedinit();
 
-	unsigned int ndigits = 10, maxbits, d, e, r;
-	//unsigned char d, e, r;
+	unsigned int ndigits = 10, maxbits, d, e;
+	double mu = 0.8f;	
+
 	maxbits = pow(2,ndigits);
-	//maxbits = ndigits*sizeof(unsigned int);
-	
+	 
 	d = uniform()*maxbits;
 	e = uniform()*maxbits;
-	printf("length = %d (%d bits)\n%d, %d\n", ndigits, maxbits, d, e);
+
+	//printf("%d,%d\n", d,e);	
 	printbin(d, ndigits);
-	printbin(e, ndigits); 
-	r = d & e;
-	printbin(r, ndigits);
+	printbin(e, ndigits);
+
+	printf("\ncrossover:\n");
+	crossover(&d,&e,ndigits);
+	printbin(d, ndigits);
+	printbin(e, ndigits);
+	//printf("%d,%d\n", d,e); 	
+ 	printf("\nmutation(?):\n");
+	printbin(d, ndigits);
+	//mutate(&d, mu, ndigits);
+	mutate(&d, 1, ndigits);
+	printbin(d, ndigits);	
+
+	//printf("%d\n", d);
+	//r = d & e;
+	//printbin(r, ndigits);
 	return 0;
 }
