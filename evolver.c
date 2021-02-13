@@ -14,8 +14,9 @@ gcc evolver.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-liba
 #define HMAX 1.0
 #define HMIN 1.e-3
 #define RKTOL 1.e-5
-#define Number_of_days_in_time_series 101
-#define Number_of_variables_in_time_series 5
+
+#define n_days 101 // Number of days in time series
+#define n_vars 5   // Number of variables in time series
 
 #define crom2IC(c) (((double) c)/1000)
 #define crom2HSPar(c) (((double) c)/1099511627776UL)
@@ -36,18 +37,16 @@ typedef struct {
 
 typedef struct {
 	unsigned n_days;
-	float Data_Time_Series[Number_of_days_in_time_series][Number_of_variables_in_time_series];
+	float Data_Time_Series[n_days][n_vars];
 	unsigned PopSize;
 } DataForFitting;
-
-
 
 
 void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 	DataForFitting *TDfF = (DataForFitting *) TheData;
 	DataForFitting ThePrediction = { 
 		TDfF -> PopSize, 
-		TDfF -> N_Days, {{ 
+		TDfF -> n_days, {{ 
 		  TDfF -> Data_Time_Series[0][0], 
 		  TDfF -> Data_Time_Series[0][1],
 		  TDfF -> Data_Time_Series[0][2],
@@ -130,24 +129,6 @@ int GeneratePredictionFromIndividual(double *xt, void *ODE_pars, DataForFitting 
 	return 0;
 }
 
-double Parameters2norm
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#define n_days 101 // Number of days in time series
-#define n_vars 5   // Number of variables in time series
-
 double Parameters2norm(double *parameters, double *x0, void *TheData void){
       register unsigned ndays;
       DataForFitting *TheData = (DataForFitting *) TheData void;
@@ -177,15 +158,10 @@ double Parameters2norm(double *parameters, double *x0, void *TheData void){
       return norm;      
 }
 
-
-
-
-
-
 int Steepest_Descent_backtracking(double *, double *, double *, double (*) (double *, double *, void *), double *, void *);
 
 
-void CoreModelOuadraticErrorFitness(individual *ind, void TheData_void) {DataForFitting TheData = (DataForFitting *) TheData_void;
+void CoreModelQuadraticErrorFitness(individual *ind, void TheData_void) {DataForFitting TheData = (DataForFitting *) TheData_void;
 	double ic[CoreModelDIM] = { TheData -> PopSize, crom2IC(ind->IC[0]), crom2IC(ind->IC[1]), crom2IC(ind->IC[2]), 
 	                            TheData -> Data_Time_Series[0][0]
 	                            TheData -> Data_Time_Series[0][3] }
@@ -222,10 +198,6 @@ void CoreModelOuadraticErrorFitness(individual *ind, void TheData_void) {DataFor
 		}
 	}
 }
-
-
-
-
 
 
 
