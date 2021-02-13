@@ -18,10 +18,16 @@ gcc evolver.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-liba
 #define n_days 101 // Number of days in time series
 #define n_vars 5   // Number of variables in time series
 
+//antidiscretising functions
 #define crom2IC(c) (((double) c)/1000)
 #define crom2HSPar(c) (((double) c)/1099511627776UL)
 #define crom2Par(c) (((double) c)/1048576U)
 #define crom2LSPar(c) (((double) c)/1024U)
+
+//discretising functions
+#define Par2HSDiscPar(c) (c * 1099511627776UL)
+#define Par2DiscPar(c) (c * 1048576U)
+#define Par2LSDiscPar(c) (c * 1024U)
 
 typedef struct {
 	unsigned long IC[IC_GENES_NUMBER];
