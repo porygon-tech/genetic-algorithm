@@ -11,7 +11,7 @@ double Params2norm(double *parameters, doble *x0, void *TheData void){
                                   parameters[8], parameters[9], parameters[10], TheData->PopSize };
       double xt[CoreModelDim]={x0[0], x0[1], x0[2], x0[3], x0[4], x0[5], x0[6], x0[7] };
       
-      for (ndays=1; ndays<=TheData->n_days; ndays++) {
+      for (ndays=1; ndays <= TheData->n_days; ndays++) {
           int status;
           while (t+h < ndays) {
                 status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
