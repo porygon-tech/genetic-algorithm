@@ -18,7 +18,7 @@ gcc evolver.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-liba
 #define N_DAYS 101 // Number of days in time series
 #define N_VARS 5   // Number of variables in time series
 
-#define POPSIZE 10 //Alseda recomienda 2000
+#define POPSIZE 2000 //Alseda recomienda 2000
 
 //antidiscretising functions
 #define crom2IC(c) (((double) c)/1000)
