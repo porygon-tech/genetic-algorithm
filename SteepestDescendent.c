@@ -1,7 +1,83 @@
 // Steepest Descendent Method Backtracking 
+#include <stdio.h>
+#include <math.h>
+#include "GeneticAlgorithm.h"
+
+#define TOL 1.0e-6
+#define ZEROT 1.e-14
+#define ITER_MAX 1000
+
+void copy_vect (double *dest, double *source, unsigned int n) {
+   register unsigned int i;
+   for (i=0; i<n; i++, dest++, source++) *dest = *source;
+}
+
+void LinComb_vect (double *dest, double *v1, double *v2, double alpha, unsigned int n) {
+   register unsigned int i;
+   for (i=0; i<n; i++) dest[i] = v1[i] - alpha *v2[i];
+} 
+
+double dot_product_vect (double *v, unsigned int n) {
+   register unsigned int i;
+   double dot = 0.0;
+   for (i=0; i<n; i++, v++) {
+      dot += (*v) * (*v);
+   }
+   return dot;
+}
+
+double max_norm_vect (double *v, unsigned int n) {
+   register unsigned int i;
+   double x, norm = 0.0;
+   for (i=0; i<n; i++){
+      if (norm < (x = fabs(v[i]))) norm = x;
+   }
+   return norm;
+}
+
+double forward_gradient ( double *, unsigned int, double (*)(double *, double *, void *), double *, double *, void *, double, double *);
 
 
-// FALTAN COSAS QUE NO SE VEN ...
+int Steepest_Descent_backtracking ( double *x, double *fx, double *fx_base, double (*f)(double *, double *, void *), double *ic, void *TheData) {
+   
+   register unsigned iter = 0U;
+   double gradient[PARAMETERS_GENES_NUMBER], grad_abs_error_inf_norm, sigma = 0.1, rho = 0.5;
+   double gradient_max_norm = forward_gradient (gradient, PARAMETERS_GENES_NUMBER, f, x, ic, TheData, 1.0e-6, &grad_abs_error_inf_norm);
+   *fx_base = *fx = f(x, ic, TheData);
+   
+   while ( gradient_max_norm >= TOL ) {
+       double x_new_try[PARAMETERS_GENES_NUMBER], fx_new_try, alpha = gradient_max_norm;
+       
+       for ( i=0; i<PARAMETERS_GENES_NUMBER; i++){
+          gradient[i] /= gradient_max_norm;
+          if (fabs(gradient[i]) < ZEROT || x[i] < ZEROT || x[i] > ONET) {
+             gradient[i] = 0.0; continue;
+          }
+          double alpha_new = (gradient[i] > 0.0) ? x[i] / gradient[i] : (x[i] - 1.0) / gradient[i];
+          if (alpha_new < alpha) alpha = alpha_new;
+       }
+       
+       double sigma_gradient_L2norm = sigma * dot_product_vect(gradient, PARAMETERS_GENES_NUMBER);
+       
+       LinComb_vect(x_new_try, x, alpha, gradient, PARAMETERS_GENES_NUMBER); 
+       fx_new_try = f(x_new_try, ic, TheData);
+       
+       while ( fx_new_try > *fx + alpha * sigma_gradient_L2norm){
+          alpha *= rho; 
+          LinComb_vect(x_new_try, x, alpha, gradient, PARAMETERS_GENES_NUMBER);
+          fx_new_try = f(x_new_try, ic, TheData);
+       } ;
+       if (*fx < fx_new_try + TOL || alpha * max_norm_vect(gradient, PARAMETERS_GENES_NUMBER) < TOL) return iter;
+       
+       double relative_fitness_error = (*fx - fx_new_try) / (*fx);
+       copy_vect(x, x_new_try, PARAMETERS_GENES_NUMBER); *fx = fx_new_try; iter ++;
+       
+       if ( iter >= ITER_MAX || relative_fitness_error < TOL ) return iter;
+       
+       gradient_max_norm = forward_gradient ( gradient, PARAMETERS_GENES_NUMBER, f, x, ic, TheData, TOL, &grad_abs_error_ind_norm);
+   }
+   return iter;
+}
 
 // Numerical computation of the gradient
 #define GSL EPSILON 2.220446049250313e-16
