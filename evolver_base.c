@@ -18,8 +18,6 @@ gcc evolver_base.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static
 #define n_days 101 // Number of days in time series
 #define n_vars 5   // Number of variables in time series
 
-#define PopSize 1000000
-
 //antidiscretising functions
 #define crom2IC(c) (((double) c)/1000)
 #define crom2HSPar(c) (((double) c)/1099511627776UL)
@@ -46,7 +44,7 @@ void printbin(int n, int len){
 			if (k & 1) printf("1");
 			else       printf("0");
 	}
-	//printf("\n");
+	printf("\n");
 }
 
 void seedinit(void){
@@ -113,13 +111,59 @@ void printind(individual p){
 	printf("%.3f           ", p.DeltaPars[7]); printbin(p.Pars[7]  , 10); printf("\n");
 }
 
+void mutate2(unsigned int *a, double mu, unsigned int ndigits){
+	//lifelike mutation effect
+	double p;
+	unsigned long int points = 0, add = 0;
+	for (int i = 0; i < ndigits; ++i){
+		p = uniform();
+		if( p < mu){
+			add = (int) pow(2, i);
+			points = points ^ add;			
+		}
+		//printbin(points, ndigits); printf(" %d\n", points);
+	}
+	*a = (points ^ *a);
+}
+
 //-----------------------------------
 
 
 
 int main(int argc, char const *argv[])
 {
-	/*
+	seedinit();	
+	int PopSize = 1000000;
+
+	individual *population;
+	population = (individual *) malloc(sizeof(individual) * PopSize);
+
+	//for (int i = 0; i < PopSize; ++i){ indiv_init(&population[i]); }
+
+
+
+/*	//MUTATION TEST
+	unsigned int ndigits = 20, chr;
+	double mu = 0.1f;	
+
+	double d;
+	d = uniform(); printf("%.6lf\n", d);
+	chr = Par2DiscPar(d);
+	printbin(chr,ndigits);
+	mutate2(&chr, mu, ndigits);
+	printbin(chr,ndigits);
+	d = crom2Par(chr); printf("%.6lf\n", d);
+*/
+
+
+/*	//INDIVIDUAL INITIALISATION TEST
+	individual p;
+	indiv_init(&p);
+	printind(p);
+*/
+
+
+/*	//PHENOTYPE-GENOTYPE ENCODING TEST
 	double d;
 	d = 0.023;
 	printf("%.3lf\n", d);
@@ -136,15 +180,9 @@ int main(int argc, char const *argv[])
 	char *seq;
 	seq = itobin(Par2LSDiscPar(0.023),10);
 	printf("%s\n", seq);
-	*/
-	seedinit();
+*/
 
-	individual p;
-	indiv_init(&p);
-
-	printind(p);
-
-
+	free(population);
 	return 0;
 }
 
