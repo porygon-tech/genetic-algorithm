@@ -1,7 +1,7 @@
 // Steepest Descendent Method Backtracking 
 #include <stdio.h>
 #include <math.h>
-#include "GeneticAlgorithm.h"
+//#include "GeneticAlgorithm.h"
 
 #define TOL 1.0e-6
 #define ZEROT 1.e-14
