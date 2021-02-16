@@ -67,6 +67,17 @@ double uniform(void){
 	return (double)rand()/RAND_MAX;
 }
 ```
+### Individual initialisation
+This function initialises individuals at random.
+```c
+void indiv_init(individual *ind){
+	for (int i = 0; i < PARAMETERS_GENES_NUMBER; ++i){
+		ind->DeltaPars[i] = uniform();
+	}
+	encode(ind);
+}
+```
+
 ### Binary sequence string conversion
 here, n is a positive integer lower than 2^len, and len is the generated sequence length. It can be used as follows: 
 ```c
@@ -105,6 +116,39 @@ void printbin(int n, int len){
 	printf("\n");
 }
 ```
+### Mutation
+this function simulates the real-life process of mutation, with a mutation rate (mu) per nucleotide (=digit).
+```c
+void mutate2(unsigned int *a, double mu, unsigned int ndigits){
+	//lifelike mutation effect
+	double p;
+	unsigned long int points = 0, add = 0;
+	for (int i = 0; i < ndigits; ++i){
+		p = uniform();
+		if( p < mu){
+			add = (int) pow(2, i);
+			points = points ^ add;
+		}
+		//printbin(points, ndigits); printf(" %d\n", points);
+	}
+	*a = (points ^ *a);
+}
+```
+
+### Crossover
+this one simulates a crossover between two sequences a and b, which must be passed as pointers.
+```c
+void crossover(unsigned int *a, unsigned int *b, unsigned int ndigits) {
+	unsigned int ax, bx;
+	unsigned int cut = uniform()*(ndigits-1) + 1;
+	unsigned int mask = pow(2,cut)-1;
+	ax = (~mask & *a) | ( mask & *b);
+	bx = ( mask & *a) | (~mask & *b);
+	*a = ax;
+	*b = bx;
+}
+```
+
 ### Fitness function computation
 The function to compute the Vector Field, the function to generate predictions from individuals, the function to obtain the norm, and the function to merge all this functions and return the fitness of each individual inside a population. Are the ones provided in the assignment with a few changes:
 
@@ -228,7 +272,7 @@ void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 ```
 
 ### Genetic functions
-A one by one Toutnament Selection is perform to select the parents.
+A one by one Tournament Selection is performed to select the parents.
 ```c
 
 ```
