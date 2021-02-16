@@ -138,38 +138,6 @@ void printbin(int n, int len){
 	printf("\n");
 }
 ```
-### Mutation
-this function simulates the real-life process of mutation, with a mutation rate (mu) per nucleotide (=digit).
-```c
-void mutate2(unsigned int *a, double mu, unsigned int ndigits){
-	//lifelike mutation effect
-	double p;
-	unsigned long int points = 0, add = 0;
-	for (int i = 0; i < ndigits; ++i){
-		p = uniform();
-		if( p < mu){
-			add = (int) pow(2, i);
-			points = points ^ add;
-		}
-		//printbin(points, ndigits); printf(" %d\n", points);
-	}
-	*a = (points ^ *a);
-}
-```
-
-### Crossover
-this one simulates a crossover between two sequences a and b, which must be passed as pointers.
-```c
-void crossover(unsigned int *a, unsigned int *b, unsigned int ndigits) {
-	unsigned int ax, bx;
-	unsigned int cut = uniform()*(ndigits-1) + 1;
-	unsigned int mask = pow(2,cut)-1;
-	ax = (~mask & *a) | ( mask & *b);
-	bx = ( mask & *a) | (~mask & *b);
-	*a = ax;
-	*b = bx;
-}
-```
 
 ### Fitness function computation
 The function to compute the Vector Field, the function to generate predictions from individuals, the function to obtain the norm, and the function to merge all this functions and return the fitness of each individual inside a population. Are the ones provided in the assignment with a few changes:
@@ -294,10 +262,50 @@ void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 ```
 
 ### Genetic functions
+#### Tournament
 A one by one Tournament Selection is performed to select the parents.
 ```c
-
+individual* TournamentSelection(individual* ind){
+   int ind1 = uniform() * (POPSIZE - 1), ind2 = uniform() * (POPSIZE - 1);
+   while (ind2 == ind1) ind2 = uniform() * (POPSIZE - 1);
+   if (ind[ind1].fitness < ind[ind2].fitness) return (ind + ind1);
+   return (ind + ind2);
+}
 ```
+
+#### Mutation
+this function simulates the real-life process of mutation, with a mutation rate (mu) per nucleotide (=digit).
+```c
+void mutate2(unsigned int *a, double mu, unsigned int ndigits){
+	//lifelike mutation effect
+	double p;
+	unsigned long int points = 0, add = 0;
+	for (int i = 0; i < ndigits; ++i){
+		p = uniform();
+		if( p < mu){
+			add = (int) pow(2, i);
+			points = points ^ add;
+		}
+		//printbin(points, ndigits); printf(" %d\n", points);
+	}
+	*a = (points ^ *a);
+}
+```
+
+#### Crossover
+this one simulates a crossover between two sequences a and b, which must be passed as pointers.
+```c
+void crossover(unsigned int *a, unsigned int *b, unsigned int ndigits) {
+	unsigned int ax, bx;
+	unsigned int cut = uniform()*(ndigits-1) + 1;
+	unsigned int mask = pow(2,cut)-1;
+	ax = (~mask & *a) | ( mask & *b);
+	bx = ( mask & *a) | (~mask & *b);
+	*a = ax;
+	*b = bx;
+}
+```
+
 
 
 
