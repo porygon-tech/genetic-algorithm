@@ -106,7 +106,7 @@ void printbin(int n, int len){
 }
 ```
 ### Fitness function computation
-The function to compute the Vector Field, the function to generate predictions from individuals, the function to obtain the norm, and the function to merge all this functions and return the fitness of each individual inside a population; are the ones provided in the assignment with a few changes:
+The function to compute the Vector Field, the function to generate predictions from individuals, the function to obtain the norm, and the function to merge all this functions and return the fitness of each individual inside a population. Are the ones provided in the assignment with a few changes:
 
 ```c
 void CoreModel(double t, double *x, unsigned CoreModelDIM, double *der, void *Params){
