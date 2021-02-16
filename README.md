@@ -1,6 +1,6 @@
 # Genetic algorithms applied to 2020 SARS-CoV2 pandemic
 ## WARNING
-This code is still in development and has not be been finished yet. 
+This code is still in development and has not been finished yet. Functions perform well, but the main code DOES NOT WORK.
 
 ## Theory
 This kind of optimisation algorithm tries to emulate evolution by generating many different candidate solutions and then trying to improve them separately through applying a selective-pressure-like force on loci (parameters). The effect of this selective process is that beneficial alleles survive along time, while deletereous ones are renewed with new candidates.
