@@ -5,7 +5,7 @@
 #include <string.h>
 #include "RKF78.h"
 
-/*DEBUGGING:  
+/*DEBUGGING:  pra
 gcc evolver_base.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-libasan -g -Wall && time ./evo
 */
 
