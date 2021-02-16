@@ -157,21 +157,6 @@ int main(int argc, char const *argv[])
 	seedinit();	
 	int PopSize = 1000000;
 
-	individual *population;
-	population = (individual *) malloc(sizeof(individual) * PopSize);
-
-	//for (int i = 0; i < PopSize; ++i){ indiv_init(&population[i]); }
-
-
-/*
-typedef struct {
-	unsigned N_Days;
-	float Data_Time_Series[n_days][n_vars];
-	unsigned PopSize;
-} DataForFitting;
-
-*/
-
 	float RD[n_days][n_vars] = {
 		{1.000, 1.000, 0.000, 0.000, 0.000},	
 		{1.841, 1.253, 0.056, 0.348, 0.000},
@@ -283,9 +268,11 @@ typedef struct {
 	memcpy(realData.Data_Time_Series, RD, sizeof(float)*n_days*n_vars);
 	printf("%f\n", realData.Data_Time_Series[2][1]);
 
+	individual *population;
+	population = (individual *) malloc(sizeof(individual) * PopSize);
+
+	for (int i = 0; i < PopSize; ++i){ indiv_init(&population[i]); }
 	
-
-
 
 
 
