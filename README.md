@@ -1,4 +1,7 @@
 # Genetic algorithms applied to 2020 SARS-CoV2 pandemic
+## WARNING
+This code is still in development and has not be been finished yet. 
+
 ## Theory
 This kind of optimisation algorithm tries to emulate evolution by generating many different candidate solutions and then trying to improve them separately through applying a selective-pressure-like force on loci (parameters). The effect of this selective process is that beneficial alleles survive along time, while deletereous ones are renewed with new candidates.
 
@@ -77,6 +80,25 @@ void indiv_init(individual *ind){
 	encode(ind);
 }
 ```
+
+### Encoding
+This function encodes as genotype the values stored as genotype in a given individual.
+```c
+void encode(individual *ind){
+	ind->Pars[0]  = Par2HSDiscPar(ind->DeltaPars[0]);
+	ind->Pars[9]  = Par2HSDiscPar(ind->DeltaPars[9]);
+	ind->Pars[10] = Par2HSDiscPar(ind->DeltaPars[10]);
+	ind->Pars[1]  = Par2DiscPar  (ind->DeltaPars[1]);
+	ind->Pars[4]  = Par2DiscPar  (ind->DeltaPars[4]);
+	ind->Pars[5]  = Par2DiscPar  (ind->DeltaPars[5]);
+	ind->Pars[6]  = Par2DiscPar  (ind->DeltaPars[6]);
+	ind->Pars[8]  = Par2DiscPar  (ind->DeltaPars[8]);
+	ind->Pars[2]  = Par2LSDiscPar(ind->DeltaPars[2]);
+	ind->Pars[3]  = Par2LSDiscPar(ind->DeltaPars[3]);
+	ind->Pars[7]  = Par2LSDiscPar(ind->DeltaPars[7]);
+}
+```
+
 
 ### Binary sequence string conversion
 here, n is a positive integer lower than 2^len, and len is the generated sequence length. It can be used as follows: 
@@ -276,6 +298,7 @@ A one by one Tournament Selection is performed to select the parents.
 ```c
 
 ```
+
 
 
 
