@@ -28,6 +28,27 @@ More exploitatory variants (only useful when used on well-behaved functions!):
 Elitist - takes only the fittest individuals.
 Steady state - when selected parents generate their two children (with crossover and mutation), the two best ones out of this four-member family are selected. (¿Removes individuals at random (biased by fitness)?).
 
+## Structures
+Three different structures are created. The first one to store the individual, the second one to store the ODE 11 parameters and the last one to store the data.
+```c
+typedef struct {
+	unsigned long IC[IC_GENES_NUMBER];          
+	unsigned long Pars[PARAMETERS_GENES_NUMBER]; 
+	double DeltaPars[PARAMETERS_GENES_NUMBER];  
+	double fitness;
+} individual;
+
+typedef struct {
+	double beta, phi, epsI, epsY, sigma, gamma1, gamma2, kappa, p, alpha, delta;
+	unsigned PopSize;
+} ODE_Parameters;
+
+typedef struct {
+        double PopSize;
+	unsigned n_days;
+	double Data_Time_Series[N_DAYS][N_VARS];	
+} DataForFitting;
+```
 
 ## Functions
 ### Random seed initialisation
