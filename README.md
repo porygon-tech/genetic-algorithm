@@ -227,6 +227,11 @@ void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
 }
 ```
 
+### Genetic functions
+A one by one Toutnament Selection is perform to select the parents.
+```c
+
+```
 
 
 
