@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include "RKF78.h"
 #include <math.h>
-#include <string.h>
 
 /*DEBUGGING:  
-gcc evolver_base.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-libasan -g -Wall && time ./evo
+gcc evolver.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static-libasan -g -Wall && time ./evo
 */
 
 #define IC_GENES_NUMBER 3
@@ -25,7 +24,7 @@ gcc evolver_base.c RKF78-2.2.c/RKF78.c -o evo -lm -O3 -fsanitize=address -static
 #define crom2Par(c) (((double) c)/1048576U)
 #define crom2LSPar(c) (((double) c)/1024U)
 
-//discretising functions
+//discretising fu
 #define Par2HSDiscPar(c) (c * 1099511627776UL)
 #define Par2DiscPar(c) (c * 1048576U)
 #define Par2LSDiscPar(c) (c * 1024U)
@@ -38,127 +37,192 @@ typedef struct {
 } individual;
 
 typedef struct {
-	unsigned N_Days;
+	double beta, phi, epsI, epsY, sigma, gamma1, gamma2, kappa, p, alpha, delta;
+	unsigned PopSize;
+} ODE_Parameters;
+
+typedef struct {
+	unsigned n_days;
 	float Data_Time_Series[n_days][n_vars];
 	unsigned PopSize;
 } DataForFitting;
 
-//-----------------------------------
-void printbin(int n, int len){
-	int k;
-	for (int i = len-1; i >= 0; i--){
-			k = n >> i;
-			if (k & 1) printf("1");
-			else       printf("0");
-	}
-	printf("\n");
+
+void CoreModelVersusDataQuadraticError(individual *ind, void *TheData) {
+	DataForFitting *TDfF = (DataForFitting *) TheData;
+	DataForFitting ThePrediction = { 
+		TDfF -> PopSize, 
+		TDfF -> n_days, {{ 
+		  TDfF -> Data_Time_Series[0][0], 
+		  TDfF -> Data_Time_Series[0][1],
+		  TDfF -> Data_Time_Series[0][2],
+		  TDfF -> Data_Time_Series[0][3],
+		  TDfF -> Data_Time_Series[0][4]
+		}} 
+	};
+
+	double xt[CoreModelDIM] = { 
+		TDfF -> PopSize, 
+		crom2IC(ind -> IC[0]), 
+		crom2IC(ind -> IC[1]),
+		crom2IC(ind -> IC[2]), 
+		TDfF -> Data_Time_Series[0][0],
+		TDfF -> Data_Time_Series[0][1], 
+		TDfF -> Data_Time_Series[0][2],
+		TDfF -> Data_Time_Series[0][3] 
+	};
+
+	xt[0] -= (xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]);
+
+	ODE_Parameters ODE_pars = { 
+		crom2HSPar(ind -> Pars[0]), 
+		crom2Par(ind -> Pars[1]),
+		crom2LSPar(ind -> Pars[2]), 
+		crom2LSPar(ind -> Pars[3]),
+		crom2Par(ind -> Pars[4]), 
+		crom2Par(ind -> Pars[5]),
+		crom2Par(ind -> Pars[6]), 
+		crom2LSPar(ind -> Pars[7]),
+		crom2Par(ind -> Pars[8]), 
+		crom2HSPar(ind -> Pars[9]),
+		crom2HSPar(ind -> Pars[10]), 
+		TDfF -> PopSize 
+	};
+
+	if(GeneratePredictionFromIndividual(xt, &ODE_pars, &ThePrediction)) {
+		ind -> fitness = MAXDOUBLE;
+		return;
+	};
 }
 
-void seedinit(void){
-	time_t clock;
-	srand((unsigned) time(&clock));
+void CoreModel(double t, double *x, unsigned CoreModelDIM, double *der, void *Params){
+	ODE_Parameters *par = (ODE_Parameters *) Params; // To simplify the usage of Params (void pointer)
+	
+	double sigmae   = par -> sigma * x[1],
+	       gamma1i1 = par -> gamma1 * x[2],
+	       kappaA   = par -> kappa*x[3],
+	       alphai2  = par -> alpha*x[5];
+
+	der[0] = par -> phi*x[2] + x[3] + (1-par -> epsI)*(x[4]+x[5]) + (1-par -> epsY)*x[6];
+	der[0] = - par -> beta * (x[0] * der[0])/par -> PopSize;
+	der[1] = - der[0] - sigmae;
+	der[2] = sigmae - gamma1i1;
+	der[3] = (1-par -> p)*gamma1i1 - kappaA - par -> gamma2*x[3] ;
+	der[4] = kappaA - par -> gamma2*x[4];
+	der[5] = par -> p*gamma1i1 - par -> gamma2*x[5] - alphai2;
+	der[6] = alphai2 - (par -> gamma2+par -> delta)*x[6];
+	der[7] = par -> gamma2*(x[3] + x[4] + x[5] + x[6]);
 }
 
-double uniform(void){
-	// Returns a number in [0,1)
-	return (double)rand()/RAND_MAX;
-}
-
-char *itobin(int n, int len){
-	int k, t;
-	char *p;
-	t = 0;
-	p = (char*)malloc(len+1);
-	if (p == NULL) exit(EXIT_FAILURE);
-
-	for (int i = len-1; i >= 0; i--){
-			k = n >> i;
-			if (k & 1) *(p+t) = 1 + '0';
-			else       *(p+t) = 0 + '0';
-			t++;
-	}
-	printf("\n");
-	*(p+t) = '\0';
-
-	return  p;
-}
-
-void encode(individual *ind){
-	ind->Pars[0]  = Par2HSDiscPar(ind->DeltaPars[0]);
-	ind->Pars[9]  = Par2HSDiscPar(ind->DeltaPars[9]);
-	ind->Pars[10] = Par2HSDiscPar(ind->DeltaPars[10]);
-	ind->Pars[1]  = Par2DiscPar  (ind->DeltaPars[1]);
-	ind->Pars[4]  = Par2DiscPar  (ind->DeltaPars[4]);
-	ind->Pars[5]  = Par2DiscPar  (ind->DeltaPars[5]);
-	ind->Pars[6]  = Par2DiscPar  (ind->DeltaPars[6]);
-	ind->Pars[8]  = Par2DiscPar  (ind->DeltaPars[8]);
-	ind->Pars[2]  = Par2LSDiscPar(ind->DeltaPars[2]);
-	ind->Pars[3]  = Par2LSDiscPar(ind->DeltaPars[3]);
-	ind->Pars[7]  = Par2LSDiscPar(ind->DeltaPars[7]);
-}
-
-void decode(individual *ind){
-	ind->DeltaPars[0]  = crom2HSPar(ind->Pars[0]);
-	ind->DeltaPars[9]  = crom2HSPar(ind->Pars[9]);
-	ind->DeltaPars[10] = crom2HSPar(ind->Pars[10]);
-	ind->DeltaPars[1]  = crom2Par  (ind->Pars[1]);
-	ind->DeltaPars[4]  = crom2Par  (ind->Pars[4]);
-	ind->DeltaPars[5]  = crom2Par  (ind->Pars[5]);
-	ind->DeltaPars[6]  = crom2Par  (ind->Pars[6]);
-	ind->DeltaPars[8]  = crom2Par  (ind->Pars[8]);
-	ind->DeltaPars[2]  = crom2LSPar(ind->Pars[2]);
-	ind->DeltaPars[3]  = crom2LSPar(ind->Pars[3]);
-	ind->DeltaPars[7]  = crom2LSPar(ind->Pars[7]);
-}
-
-
-void indiv_init(individual *ind){
-	for (int i = 0; i < PARAMETERS_GENES_NUMBER; ++i){
-		ind->DeltaPars[i] = uniform();
-	}
-	encode(ind);
-}
-
-void printind(individual p){
-	printf("%.12f  ",         p.DeltaPars[0]); printbin(p.Pars[0]  , 40); printf("\n");
-	printf("%.12f  ",         p.DeltaPars[9]); printbin(p.Pars[9]  , 40); printf("\n");
-	printf("%.12f  ",         p.DeltaPars[10]);printbin(p.Pars[10] , 40); printf("\n");
-	printf("%.6f        ",    p.DeltaPars[1]); printbin(p.Pars[1]  , 20); printf("\n");
-	printf("%.6f        ",    p.DeltaPars[4]); printbin(p.Pars[4]  , 20); printf("\n");
-	printf("%.6f        ",    p.DeltaPars[5]); printbin(p.Pars[5]  , 20); printf("\n");
-	printf("%.6f        ",    p.DeltaPars[6]); printbin(p.Pars[6]  , 20); printf("\n");
-	printf("%.6f        ",    p.DeltaPars[8]); printbin(p.Pars[8]  , 20); printf("\n");
-	printf("%.3f           ", p.DeltaPars[2]); printbin(p.Pars[2]  , 10); printf("\n");
-	printf("%.3f           ", p.DeltaPars[3]); printbin(p.Pars[3]  , 10); printf("\n");
-	printf("%.3f           ", p.DeltaPars[7]); printbin(p.Pars[7]  , 10); printf("\n");
-}
-
-void mutate2(unsigned int *a, double mu, unsigned int ndigits){
-	//lifelike mutation effect
-	double p;
-	unsigned long int points = 0, add = 0;
-	for (int i = 0; i < ndigits; ++i){
-		p = uniform();
-		if( p < mu){
-			add = (int) pow(2, i);
-			points = points ^ add;			
+int GeneratePredictionFromIndividual(double *xt, void *ODE_pars, DataForFitting *Pred) {
+	register unsigned ndays;
+	double t = 0.0, err, h = 1.e-3;
+	for (ndays=1; ndays <= Pred -> n_days; ndays++) { 
+		int status;
+		while(t+h < ndays) {
+			status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
+			if(status) return status;
 		}
-		//printbin(points, ndigits); printf(" %d\n", points);
+		h = ndays - t;
+		status = RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, ODE_pars, CoreModel);
+		if(status) return status;
+		Pred -> Data_Time_Series[ndays][0] = xt[4];
+		Pred -> Data_Time_Series[ndays][1] = xt[5];
+		Pred -> Data_Time_Series[ndays][2] = xt[6];
+		Pred -> Data_Time_Series[ndays][3] = xt[7];
+		Pred -> Data_Time_Series[ndays][4] = Pred -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]);
 	}
-	*a = (points ^ *a);
+	return 0;
 }
 
-//-----------------------------------
+double Parameters2norm(double *parameters, double *x0, void *TheData void){
+      register unsigned ndays;
+      DataForFitting *TheData = (DataForFitting *) TheData void;
+      double t=0.0, err, h=1.e-3, norm=0.0;
+      ODE_Parameters ODE pars = { parameters[0], parameters[1], parameters[2], parameters[3],
+                                  parameters[4], parameters[5], parameters[6], parameters[7],
+                                  parameters[8], parameters[9], parameters[10], TheData->PopSize };
+      double xt[CoreModelDim]={x0[0], x0[1], x0[2], x0[3], x0[4], x0[5], x0[6], x0[7] };
+      
+      for (ndays=1; ndays<=TheData->n_days; ndays++) {
+          int status;
+          while (t+h < ndays) {
+                status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+                if (status) return MAXDOUBLE;
+          }
+          h=ndays-t;
+          status=RKF78Sys(&t, xt, CoreModelDIM, &h, &err, HMIN, HMAX, RKTOL, &ODE pars, CoreModel);
+          if (status) return MAXDOUBLE;
+          
+          double d0=xt[4]-TheData -> Data_time_Series[ndays][0];
+          double d1=xt[5]-TheData -> Data_time_Series[ndays][1];
+          double d2=xt[6]-TheData -> Data_time_Series[ndays][2];
+          double d3=xt[7]-TheData -> Data_time_Series[ndays][3];
+          double d4=TheData -> PopSize - (xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7]) -TheData -> Data_time_Series[ndays][4];
+          norm += ndays * (d0*d0+d1*d1+d2*d2+d3*d3+d4*d4);
+      }
+      return norm;      
+}
+
+int Steepest_Descent_backtracking(double *, double *, double *, double (*) (double *, double *, void *), double *, void *);
+
+
+void CoreModelQuadraticErrorFitness(individual *ind, void TheData_void) {DataForFitting TheData = (DataForFitting *) TheData_void;
+	double ic[CoreModelDIM] = { TheData -> PopSize, crom2IC(ind->IC[0]), crom2IC(ind->IC[1]), crom2IC(ind->IC[2]), 
+	                            TheData -> Data_Time_Series[0][0]
+	                            TheData -> Data_Time_Series[0][3] }
+
+	ic[0] -= (ic[1]+ic[2]+ic[3]+ic[4]+ic[5]+ic[6]);
+	ind -> DeltaPars[0]  =  crom2HSPar (ind->Pars[0]  + ind->DeltaPars[0] );
+	ind -> DeltaPars[9]  =  crom2HSPar (ind->pars[9]  + ind->DeltaPars[9] );
+	ind -> DeltaPars[10] =  crom2HSPar (ind->pars[10] + ind->DeltaPars[10]);
+	ind -> DeltaPars[1]  =  crom2Par   (ind->pars[1]  + ind->DeltaPars[1] );
+	ind -> DeltaPars[4]  =  crom2Par   (ind->pars[4]  + ind->DeltaPars[4] );
+	ind -> DeltaPars[5]  =  crom2Par   (ind->pars[5]  + ind->DeltaPars[5] );
+	ind -> DeltaPars[6]  =  crom2Par   (ind->pars[6]  + ind->DeltaPars[6] );
+	ind -> DeltaPars[8]  =  crom2Par   (ind->pars[8]  + ind->DeltaPars[8] );
+	ind -> DeltaPars[2]  =  crom2LSPar (ind->pars[2]  + ind->DeltaPars[2] );
+	ind -> DeltaPars[3]  =  crom2LSPar (ind->pars[3]  + ind->DeltaPars[3] );
+	ind -> DeltaPars[7]  =  crom2LSPar (ind->pars[7]  + ind->DeltaPars[7] );
+
+	int niters = Steepest_Descent_backtracking(ind->DeltaPars, &(ind->fitness), &fitness_not_improved, Parameters2norm, ic, TheData_void);
+	if(niters){ register unsigned i;
+		ind -> DeltaPars[0]  = Par2HSDiscPar(ind->DeltaPars[0]);
+		ind -> DeltaPars[9]  = Par2HSDiscPar(ind->DeltaPars[9]);
+		ind -> DeltaPars[10] = Par2HSDiscPar(ind->DeltaPars[10]);
+		ind -> DeltaPars[1]  = Par2DiscPar  (ind->DeltaPars[1]);
+		ind -> DeltaPars[4]  = Par2DiscPar  (ind->DeltaPars[4]);
+		ind -> DeltaPars[5]  = Par2DiscPar  (ind->DeltaPars[5]);
+		ind -> DeltaPars[6]  = Par2DiscPar  (ind->DeltaPars[6]);
+		ind -> DeltaPars[8]  = Par2DiscPar  (ind->DeltaPars[8]);
+		ind -> DeltaPars[2]  = Par2LSDiscPar(ind->DeltaPars[2]);
+		ind -> DeltaPars[3]  = Par2LSDiscPar(ind->DeltaPars[3]);
+		ind -> DeltaPars[7]  = Par2LSDiscPar(ind->DeltaPars[7]);
+		for (i = 0; i < PARAMETERS_GENES_NUMBER; ++i){
+			ind -> Pars[i] = ind -> DeltaPars[i];
+			ind -> DeltaPars[i] -= ind -> Pars[i];
+		}
+	}
+}
 
 
 
+
+
+
+
+
+
+
+ 
 int main(int argc, char const *argv[])
 {
-	seedinit();	
-	int PopSize = 1000000;
 
-	float RD[n_days][n_vars] = {
-		{1.000, 1.000, 0.000, 0.000, 0.000},	
+	/*
+	DataForFitting realData;
+	realData.PopSize = 1000000;
+	realData.Data_Time_Series = {
+	//	{1.000, 1.000, 0.000, 0.000, 0.000},	
 		{1.841, 1.253, 0.056, 0.348, 0.000},
 		{2.285, 1.607, 0.123, 0.733, 0.002},
 		{2.571, 2.041, 0.203, 1.169, 0.004},
@@ -260,67 +324,6 @@ int main(int argc, char const *argv[])
 		{23002.296, 32448.131, 9788.183, 71455.071, 1629.977},
 		{24711.260, 34688.480, 10562.489, 77627.195, 1777.437}
 	};
-
-	DataForFitting realData;
-
-	realData.PopSize = PopSize;
-	realData.N_Days = n_days;
-	memcpy(realData.Data_Time_Series, RD, sizeof(float)*n_days*n_vars);
-	printf("%f\n", realData.Data_Time_Series[2][1]);
-
-	individual *population;
-	population = (individual *) malloc(sizeof(individual) * PopSize);
-
-	for (int i = 0; i < PopSize; ++i){ indiv_init(&population[i]); }
-	
-
-
-
-
-
-/*	//MUTATION TEST
-	unsigned int ndigits = 20, chr;
-	double mu = 0.1f;	
-
-	double d;
-	d = uniform(); printf("%.6lf\n", d);
-	chr = Par2DiscPar(d);
-	printbin(chr,ndigits);
-	mutate2(&chr, mu, ndigits);
-	printbin(chr,ndigits);
-	d = crom2Par(chr); printf("%.6lf\n", d);
-*/
-
-
-/*	//INDIVIDUAL INITIALISATION TEST
-	individual p;
-	indiv_init(&p);
-	printind(p);
-*/
-
-
-/*	//PHENOTYPE-GENOTYPE ENCODING TEST
-	double d;
-	d = 0.023;
-	printf("%.3lf\n", d);
-	printbin(Par2LSDiscPar(d),10);
-
-	d = 0.000001;
-	printf("%.6lf\n", d);
-	printbin(Par2DiscPar(d),20);
-
-	d = 0.000000000003;
-	printf("%.12lf\n", d);
-	printbin(Par2HSDiscPar(d),40);
-
-	char *seq;
-	seq = itobin(Par2LSDiscPar(0.023),10);
-	printf("%s\n", seq);
-*/
-
-	free(population);
+	*/
 	return 0;
 }
-
-
-
